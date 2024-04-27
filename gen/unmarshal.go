@@ -210,6 +210,11 @@ func (u *unmarshalGen) gMap(m *Map) {
 		return
 	}
 	sz := randIdent()
+	var keyStr string
+	if be, ok := m.Key.(*BaseElem); ok && be.TypeName() != "string" {
+		keyStr = randIdent()
+		u.p.declare(keyStr, "string")
+	}
 	u.p.declare(sz, u32)
 	u.assignAndCheck(sz, mapHeader)
 
@@ -222,8 +227,13 @@ func (u *unmarshalGen) gMap(m *Map) {
 
 	// loop and get key,value
 	u.p.printf("\nfor %s > 0 {", sz)
-	u.p.printf("\nvar %s string; var %s %s; %s--", m.Keyidx, m.Validx, m.Value.TypeName(), sz)
-	u.assignAndCheck(m.Keyidx, stringTyp)
+	u.p.printf("\nvar %s %s; var %s %s; %s--", m.Keyidx, m.Key.TypeName(), m.Validx, m.Value.TypeName(), sz)
+	if be, ok := m.Key.(*BaseElem); ok && be.TypeName() != "string" {
+		u.assignAndCheck(keyStr, stringTyp)
+		u.p.printf("\n%s = %s(%s)", m.Keyidx, be.ShimFromBase, keyStr)
+	} else {
+		u.assignAndCheck(m.Keyidx, stringTyp)
+	}
 	u.ctx.PushVar(m.Keyidx)
 	next(u, m.Value)
 	u.ctx.Pop()
