@@ -193,6 +193,11 @@ func (d *decodeGen) gMap(m *Map) {
 		return
 	}
 	sz := randIdent()
+	var keyStr string
+	if be, ok := m.Key.(*BaseElem); ok && be.TypeName() != "string" {
+		keyStr = randIdent()
+		d.p.declare(keyStr, "string")
+	}
 
 	// resize or allocate map
 	d.p.declare(sz, u32)
@@ -203,9 +208,14 @@ func (d *decodeGen) gMap(m *Map) {
 	// pair and assign
 	d.needsField()
 	d.p.printf("\nfor %s > 0 {\n%s--", sz, sz)
-	d.p.declare(m.Keyidx, "string")
+	d.p.declare(m.Keyidx, m.Key.TypeName())
 	d.p.declare(m.Validx, m.Value.TypeName())
-	d.assignAndCheck(m.Keyidx, stringTyp)
+	if be, ok := m.Key.(*BaseElem); ok && be.TypeName() != "string" {
+		d.assignAndCheck(keyStr, stringTyp)
+		d.p.printf("\n%s = %s(%s)", m.Keyidx, be.ShimFromBase, keyStr)
+	} else {
+		d.assignAndCheck(m.Keyidx, stringTyp)
+	}
 	d.ctx.PushVar(m.Keyidx)
 	next(d, m.Value)
 	d.p.mapAssign(m)
